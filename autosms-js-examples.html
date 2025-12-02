@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>AutoSMS JavaScript SDK - Examples</title>
+
+    <!-- AutoSMS SDK -->
+    <link rel="stylesheet" href="autosms-js-sdk.css">
+    <script src="autosms-js-sdk.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9fafb;
+        }
+        .example {
+            background: white;
+            padding: 24px;
+            margin-bottom: 32px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .example h2 {
+            margin-top: 0;
+            color: #111827;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        .code-block code {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AutoSMS JavaScript SDK Examples</h1>
+    <p>Complete integration examples for the AutoSMS Payment Hub JavaScript SDK.</p>
+
+    <!-- Example 1: Simple Integration -->
+    <div class="example">
+        <h2>Example 1: Simple Order Creation</h2>
+        <p>Basic order creation with automatic payment verification.</p>
+
+        <div class="code-block"><code>&lt;!-- Include SDK --&gt;
+&lt;link rel="stylesheet" href="autosms-js-sdk.css"&gt;
+&lt;script src="autosms-js-sdk.js"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+// Initialize client
+const client = new AutoSMSClient({
+    apiUrl: 'https://www.musoftwares.com',
+    apiToken: 'YOUR_API_TOKEN',  // Get from API Token Management
+    debug: true  // Enable console logging
+});
+
+// Create an order
+async function createOrder() {
+    const result = await client.createOrder({
+        customer_name: 'John Doe',
+        customer_phone: '01015218548',
+        customer_email: 'john@example.com',
+        items: [
+            {
+                name: 'Product 1',
+                quantity: 2,
+                price: 50,
+                sku: 'PROD-001'
+            }
+        ],
+        total_amount: 100,
+        currency: 'EGP'
+    });
+
+    if (result.success) {
+        console.log('Order created:', result.order);
+        // Start watching for payment
+        client.startPaymentPolling(
+            result.order.id,
+            result.order.customer_phone,
+            {
+                onSuccess: (order, transaction) => {
+                    alert('Payment received!');
+                },
+                onTimeout: () => {
+                    alert('Payment timeout');
+                }
+            }
+        );
+    }
+}
+&lt;/script&gt;</code></div>
+
+        <button onclick="exampleSimple()" class="autosms-btn autosms-btn-primary">
+            Try Example 1
+        </button>
+    </div>
+
+    <!-- Example 2: Complete Checkout Widget -->
+    <div class="example">
+        <h2>Example 2: Complete Checkout Widget</h2>
+        <p>Full checkout flow with shopping cart and automatic payment verification.</p>
+
+        <div class="code-block"><code>&lt;!-- Checkout Container --&gt;
+&lt;div id="checkout-container"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+// Initialize client
+const client = new AutoSMSClient({
+    apiUrl: 'https://www.musoftwares.com',
+    apiToken: 'YOUR_API_TOKEN',
+    onPaymentVerified: (order, transaction) => {
+        // Redirect to thank you page
+        window.location.href = '/thank-you?order=' + order.id;
+    }
+});
+
+// Initialize checkout
+const checkout = new AutoSMSCheckout(client, {
+    container: 'checkout-container',
+    currency: 'EGP',
+    theme: 'light',  // or 'dark'
+    autoStartPolling: true
+});
+
+// Shopping cart
+const cart = [
+    { name: 'Product 1', price: 50, quantity: 2, sku: 'PROD-001' },
+    { name: 'Product 2', price: 30, quantity: 1, sku: 'PROD-002' }
+];
+
+// Render checkout
+checkout.render(cart);
+
+// Listen for payment success event
+document.addEventListener('autosms-payment-success', (event) => {
+    console.log('Payment successful:', event.detail);
+});
+&lt;/script&gt;</code></div>
+
+        <div id="example-checkout-container"></div>
+        <button onclick="exampleCheckout()" class="autosms-btn autosms-btn-primary">
+            Launch Checkout Widget
+        </button>
+    </div>
+
+    <!-- Example 3: Manual Payment Verification -->
+    <div class="example">
+        <h2>Example 3: Manual Payment Verification</h2>
+        <p>Verify payment manually without polling.</p>
+
+        <div class="code-block"><code>&lt;script&gt;
+const client = new AutoSMSClient({
+    apiUrl: 'https://www.musoftwares.com',
+    apiToken: 'YOUR_API_TOKEN'
+});
+
+async function verifyPayment(orderId, phoneNumber) {
+    const result = await client.verifyOrderPayment(orderId, phoneNumber);
+
+    if (result.success && result.transaction) {
+        // Payment verified!
+        console.log('Payment found:', result.transaction);
+        console.log('Order updated:', result.order);
+    } else {
+        // No payment found yet
+        console.log('No payment found');
+    }
+}
+
+// Usage
+verifyPayment(123, '01015218548');
+&lt;/script&gt;</code></div>
+
+        <div style="margin-top: 16px;">
+            <input type="number" id="verify-order-id" placeholder="Order ID" class="autosms-input" style="margin-bottom: 8px;">
+            <input type="tel" id="verify-phone" placeholder="Phone Number" class="autosms-input" style="margin-bottom: 8px;">
+            <button onclick="exampleVerify()" class="autosms-btn autosms-btn-primary">
+                Verify Payment
+            </button>
+        </div>
+        <div id="verify-result" style="margin-top: 16px;"></div>
+    </div>
+
+    <!-- Example 4: E-commerce Integration -->
+    <div class="example">
+        <h2>Example 4: Complete E-commerce Integration</h2>
+        <p>Full integration for an e-commerce website.</p>
+
+        <div class="code-block"><code>&lt;!-- Product Page Button --&gt;
+&lt;button id="add-to-cart"&gt;Add to Cart&lt;/button&gt;
+&lt;button id="checkout"&gt;Checkout&lt;/button&gt;
+
+&lt;!-- Checkout Modal --&gt;
+&lt;div id="checkout-modal" style="display:none;"&gt;
+    &lt;div id="autosms-checkout"&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+// Initialize AutoSMS
+const autoSMS = {
+    client: null,
+    checkout: null,
+    cart: [],
+
+    init() {
+        this.client = new AutoSMSClient({
+            apiUrl: 'https://www.musoftwares.com',
+            apiToken: localStorage.getItem('api_token'),
+            onPaymentVerified: (order, transaction) => {
+                this.handlePaymentSuccess(order, transaction);
+            },
+            onError: (message, error) => {
+                this.handleError(message, error);
+            }
+        });
+    },
+
+    addToCart(product) {
+        const existingItem = this.cart.find(item => item.sku === product.sku);
+        if (existingItem) {
+            existingItem.quantity++;
+        } else {
+            this.cart.push({ ...product, quantity: 1 });
+        }
+        this.updateCartUI();
+    },
+
+    showCheckout() {
+        if (this.cart.length === 0) {
+            alert('Cart is empty');
+            return;
+        }
+
+        // Show modal
+        document.getElementById('checkout-modal').style.display = 'block';
+
+        // Initialize checkout widget
+        this.checkout = new AutoSMSCheckout(this.client, {
+            container: 'autosms-checkout',
+            currency: 'EGP',
+            autoStartPolling: true
+        });
+
+        this.checkout.render(this.cart);
+    },
+
+    handlePaymentSuccess(order, transaction) {
+        // Clear cart
+        this.cart = [];
+        localStorage.setItem('cart', JSON.stringify(this.cart));
+
+        // Send confirmation email
+        this.sendConfirmationEmail(order);
+
+        // Redirect to success page
+        setTimeout(() => {
+            window.location.href = '/order-success?id=' + order.id;
+        }, 2000);
+    },
+
+    handleError(message, error) {
+        console.error(message, error);
+        alert('Error: ' + message);
+    },
+
+    sendConfirmationEmail(order) {
+        // Your backend API to send confirmation email
+        fetch('/api/send-order-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: order.id })
+        });
+    },
+
+    updateCartUI() {
+        // Update cart count, etc.
+        localStorage.setItem('cart', JSON.stringify(this.cart));
+    }
+};
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    autoSMS.init();
+});
+
+// Event listeners
+document.getElementById('add-to-cart').addEventListener('click', () => {
+    autoSMS.addToCart({
+        name: 'Product Name',
+        price: 50,
+        sku: 'PROD-001'
+    });
+});
+
+document.getElementById('checkout').addEventListener('click', () => {
+    autoSMS.showCheckout();
+});
+&lt;/script&gt;</code></div>
+    </div>
+
+    <!-- Example 5: WordPress/PHP Integration -->
+    <div class="example">
+        <h2>Example 5: WordPress/PHP Integration</h2>
+        <p>Integrate with WordPress or any PHP-based CMS.</p>
+
+        <div class="code-block"><code>&lt;?php
+// In your theme's functions.php or plugin file
+
+// Enqueue AutoSMS SDK
+function enqueue_autosms_sdk() {
+    wp_enqueue_style('autosms-sdk',
+        'https://www.musoftwares.com/downloads/autosms-js-sdk.css'
+    );
+    wp_enqueue_script('autosms-sdk',
+        'https://www.musoftwares.com/downloads/autosms-js-sdk.js',
+        [], '1.0.0', true
+    );
+
+    // Pass PHP variables to JavaScript
+    wp_localize_script('autosms-sdk', 'autoSMSConfig', [
+        'apiUrl' => 'https://www.musoftwares.com',
+        'apiToken' => get_option('autosms_api_token'),
+        'currency' => get_option('woocommerce_currency', 'EGP'),
+    ]);
+}
+add_action('wp_enqueue_scripts', 'enqueue_autosms_sdk');
+
+// Add checkout button to product page
+function add_autosms_checkout_button() {
+    global $product;
+    ?>
+    &lt;button class="button autosms-buy-now"
+            data-product-name="&lt;?php echo esc_attr($product-&gt;get_name()); ?&gt;"
+            data-product-price="&lt;?php echo esc_attr($product-&gt;get_price()); ?&gt;"
+            data-product-sku="&lt;?php echo esc_attr($product-&gt;get_sku()); ?&gt;"&gt;
+        Buy with AutoSMS
+    &lt;/button>
+    &lt;?php
+}
+add_action('woocommerce_after_add_to_cart_button', 'add_autosms_checkout_button');
+?&gt;
+
+&lt;!-- JavaScript in footer --&gt;
+&lt;script&gt;
+jQuery(document).ready(function($) {
+    // Initialize AutoSMS
+    const client = new AutoSMSClient(autoSMSConfig);
+
+    // Handle buy now button
+    $('.autosms-buy-now').on('click', function() {
+        const $btn = $(this);
+        const cart = [{
+            name: $btn.data('product-name'),
+            price: parseFloat($btn.data('product-price')),
+            quantity: parseInt($('input[name="quantity"]').val()) || 1,
+            sku: $btn.data('product-sku')
+        }];
+
+        // Show checkout modal
+        showAutoSMSCheckout(cart);
+    });
+
+    function showAutoSMSCheckout(cart) {
+        // Create modal
+        const modal = $('&lt;div id="autosms-modal"&gt;').appendTo('body');
+        const container = $('&lt;div id="autosms-checkout"&gt;').appendTo(modal);
+
+        // Initialize checkout
+        const checkout = new AutoSMSCheckout(client, {
+            container: 'autosms-checkout',
+            autoStartPolling: true
+        });
+
+        checkout.render(cart);
+        modal.fadeIn();
+    }
+});
+&lt;/script&gt;</code></div>
+    </div>
+
+    <script>
+        // API Token (for demo purposes - in production, get from secure source)
+        const demoApiToken = prompt('Enter your API Token to test examples:');
+
+        // Example implementations
+        const demoClient = new AutoSMSClient({
+            apiUrl: 'https://www.musoftwares.com',
+            apiToken: demoApiToken,
+            debug: true
+        });
+
+        function exampleSimple() {
+            demoClient.createOrder({
+                customer_name: 'John Doe',
+                customer_phone: '01015218548',
+                customer_email: 'john@example.com',
+                items: [
+                    { name: 'Demo Product', quantity: 1, price: 100, sku: 'DEMO-001' }
+                ],
+                total_amount: 100,
+                currency: 'EGP'
+            }).then(result => {
+                if (result.success) {
+                    alert('Order created successfully! Order ID: ' + result.order.id);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            });
+        }
+
+        function exampleCheckout() {
+            const container = document.getElementById('example-checkout-container');
+            container.innerHTML = '<div id="demo-checkout"></div>';
+
+            const checkout = new AutoSMSCheckout(demoClient, {
+                container: 'demo-checkout',
+                currency: 'EGP',
+                autoStartPolling: true
+            });
+
+            const cart = [
+                { name: 'Product 1', price: 50, quantity: 2, sku: 'PROD-001' },
+                { name: 'Product 2', price: 30, quantity: 1, sku: 'PROD-002' }
+            ];
+
+            checkout.render(cart);
+        }
+
+        async function exampleVerify() {
+            const orderId = document.getElementById('verify-order-id').value;
+            const phone = document.getElementById('verify-phone').value;
+            const resultDiv = document.getElementById('verify-result');
+
+            if (!orderId || !phone) {
+                alert('Please enter both Order ID and Phone Number');
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="autosms-spinner"></div>';
+
+            const result = await demoClient.verifyOrderPayment(orderId, phone);
+
+            if (result.success && result.transaction) {
+                resultDiv.innerHTML = `
+                    <div class="autosms-alert autosms-alert-success">
+                        <strong>Payment Verified!</strong><br>
+                        Amount: ${result.transaction.amount} ${result.transaction.currency}<br>
+                        Transaction Date: ${result.transaction.transaction_date}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="autosms-alert autosms-alert-warning">
+                        ${result.message || 'No payment found yet'}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+
